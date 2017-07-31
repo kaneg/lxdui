@@ -1,0 +1,334 @@
+{%extends 'layout.html' %}
+{% block LayoutContent %}
+<div class="text-center navbar-fixed-top" style="z-index:9999">
+    <div class="alert alert-warning alert-dismissible" data-dismiss="alert" id="msg_error" style="display: none"
+         role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        <div id="msg_error_content"></div>
+    </div>
+    <div class="alert alert-success" data-dismiss="alert" id="msg_success" style="display: none" role="alert"></div>
+</div>
+<div class="container main">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            Container List
+        </div>
+        <div class="panel-body">
+            <div class="btn-group" role="group">
+                <button type="button" class="btn btn-default btn-primary" data-toggle="modal"
+                        data-target="#create_dialog">Create
+                </button>
+            </div>
+        </div>
+
+        <table class="table table-striped table-hover">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>IPs</th>
+                <th>Start/Stop</th>
+                <th>Copy</th>
+                <th>Delete</th>
+                <th>Console</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for lxd in lxds %}
+            <tr>
+                <td>{{lxd.name}}</td>
+                <td>
+                    <span class="label {{'label-success' if lxd.status_code==StatusCodes.RUNNING else 'label-default'}}">{{lxd.status|capitalize}}</span>
+                </td>
+
+                <td>
+                    {% if lxd.state.network %}
+                    {% for name, nic in lxd.state.network.iteritems() %}
+                    {% if name != 'lo' %}
+                    {%for ip in nic.addresses%}
+                    {% if ip.family == 'inet' %}
+                    {{ip.address}}
+                    {%endif%}
+                    {%endfor%}
+                    {%endif%}
+                    {%endfor%}
+                    {%endif%}
+                </td>
+                <td>
+
+                    {% if lxd.status_code == StatusCodes.STOPPED %}
+                    <button class="btn btn-success" name="start_btn" lxd="{{lxd.name}}" data-loading-text="Starting...">
+                        Start
+                    </button>
+                    {%endif%}
+                    {% if lxd.status_code == StatusCodes.RUNNING %}
+                    <button class="btn btn-warning" name="stop_btn" lxd="{{lxd.name}}" data-loading-text="Stopping...">
+                        Stop
+                    </button>
+                    {%endif%}
+                </td>
+                <td>
+                    <button class="btn btn-default copy_btn" data-lxd_src="{{lxd.name}}" data-toggle="modal"
+                            data-target="#copy_dialog">
+                        Copy
+                    </button>
+                </td>
+                <td>
+                    {% if lxd.status_code == StatusCodes.STOPPED %}
+                    <button class="btn btn-danger" name="delete_btn" lxd="{{lxd.name}}" data-loading-text="Deleting...">
+                        Delete
+                    </button>
+                    {%endif%}
+                </td>
+                <td>
+                    {% if lxd.status_code == StatusCodes.RUNNING %}
+                    {% if lxd.state.network %}
+                    {% for name, nic in lxd.state.network.iteritems() %}
+                    {% if name != 'lo' %}
+                    {%for ip in nic.addresses%}
+                    {% if ip.family == 'inet' %}
+                    <a href="/console/{{lxd.name}}" target="_blank">Console</a>
+                    {%endif%}
+                    {%endfor%}
+                    {%endif%}
+                    {%endfor%}
+                    {%endif%}
+
+                    {%endif%}
+
+                </td>
+            </tr>
+            {%endfor%}
+            </tbody>
+        </table>
+    </div>
+    <div id="copy_dialog" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <h4 class="modal-title">Copy an existing container to a new one</h4>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <input type="text" name="lxd_dst" class="form-control" placeholder="Container Name">
+                        </div>
+                        <!--<div class="checkbox">-->
+                        <!--<label>-->
+                        <!--<input type="checkbox" name="auto_start"> Auto Start-->
+                        <!--</label>-->
+                        <!--</div>-->
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" name="do_submit" data-loading-text="Coping...">Copy
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="create_dialog" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <h4 class="modal-title">Create Container</h4>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <input type="text" name="lxd_dst" class="form-control" placeholder="Container Name">
+                        </div>
+                        <div class="form-group">
+                            <select name="lxd_image" class="form-control" title="Image Select">
+                                <option value="">Select an image</option>
+                                {%for alias in lxd_image_aliases%}
+                                <option value="{{alias}}">{{alias}}</option>
+                                {%endfor%}
+                            </select>
+                        </div>
+                        <!--<div class="checkbox">-->
+                        <!--<label>-->
+                        <!--<input type="checkbox" name="auto_start"> Auto Start-->
+                        <!--</label>-->
+                        <!--</div>-->
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" name="do_submit" data-loading-text="Creating...">
+                        Create
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<script>
+    $(function () {
+        $('button[name="start_btn"]').click(function () {
+            var $btn = $(this);
+            $btn.button('loading');
+            var name = $(this).attr('lxd');
+            console.log('start ' + name);
+            $.get('/start/' + name).done(function (data) {
+                console.log(data);
+                data = JSON.parse(data);
+                if (data['status'] == 'Failure') {
+                    $("#msg_error_content").text(data['metadata']);
+                    $("#msg_error").show();
+                    $btn.button('reset');
+                } else {
+                    $("#msg_success").text(name + " Started.").fadeIn().delay(2000).fadeOut();
+                    document.location.reload();
+                }
+            }).always(function () {
+                $btn.button('reset');
+            });
+        });
+        $('button[name="stop_btn"]').click(function () {
+            var $btn = $(this);
+            $btn.button('loading');
+            var name = $(this).attr('lxd');
+            console.log('stop ' + $(this).attr('lxd'));
+
+            $.get('/stop/' + name).done(function (data) {
+                console.log(data);
+                data = JSON.parse(data);
+                if (data['status'] == 'Failure') {
+                    $("#msg_error_content").text(data['metadata']);
+                    $("#msg_error").show();
+                } else {
+                    $("#msg_success").text(name + " Stopped.").fadeIn().delay(2000).fadeOut();
+                    document.location.reload();
+                }
+            }).always(function () {
+                $btn.button('reset');
+            });
+        });
+        $('button[name="delete_btn"]').click(function () {
+            var $btn = $(this);
+            $btn.button('loading');
+            var name = $(this).attr('lxd');
+            console.log('stop ' + $(this).attr('lxd'));
+
+            $.get('/delete/' + name).done(function (data) {
+                console.log(data);
+                data = JSON.parse(data);
+                if (data['status'] == 'Failure') {
+                    $("#msg_error_content").text(data['metadata']);
+                    $("#msg_error").show();
+                    $btn.button('reset');
+                } else {
+                    $("#msg_success").text(name + " Deleted.").fadeIn().delay(2000).fadeOut();
+                    document.location.reload();
+                }
+            }).always(function () {
+                $btn.button('reset');
+            });
+        });
+
+        $('#copy_dialog').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget); // Button that triggered the modal
+            var lxd_src = button.data('lxd_src'); // Extract info from data-* attributes
+
+            var modal = $(this);
+            modal.find('.modal-title').text('Copy from container: ' + lxd_src);
+            modal.find('.modal-body input[name="lxd_dst"]').val('');
+            var $action = modal.find('.modal-footer button[name="do_submit"]');
+
+            $action.click(function () {
+                var lxd_dst_input = modal.find('.modal-body input[name="lxd_dst"]');
+                var lxd_dst = lxd_dst_input.val();
+                console.log('lxd_dst:' + lxd_dst);
+                if (!lxd_dst) {
+                    lxd_dst_input.parent().addClass('has-error');
+                    return;
+                } else {
+                    lxd_dst_input.parent().removeClass('has-error');
+                }
+                var $btn = $(this);
+                $btn.button('loading');
+                console.log('lxd_dst:' + lxd_dst);
+                $.get('/copy/' + lxd_src + '/' + lxd_dst).done(function (data) {
+                    console.log(data);
+                    data = JSON.parse(data);
+                    if (data['status'] == 'Failure') {
+                        $("#msg_error_content").text(data['metadata']);
+                        $("#msg_error").show();
+                        $(this).button('reset');
+                    } else {
+                        console.log('success');
+                        $("#msg_success").text(name + " Copied.").fadeIn().delay(2000).fadeOut();
+                        $btn.button('reset');
+                        document.location.reload();
+                    }
+                }).always(function () {
+                    $btn.button('reset');
+                });
+            });
+        });
+
+        $('#create_dialog').on('show.bs.modal', function (event) {
+            console.log('on create container');
+            var button = $(event.relatedTarget); // Button that triggered the modal
+            var modal = $(this);
+            modal.find('.modal-body input[name="lxd_dst"]').val('');
+            var $action = modal.find('.modal-footer button[name="do_submit"]');
+
+            $action.click(function () {
+                var lxd_dst_input = modal.find('.modal-body input[name="lxd_dst"]');
+                var lxd_dst = lxd_dst_input.val();
+                console.log('lxd_dst:' + lxd_dst);
+                if (!lxd_dst) {
+                    lxd_dst_input.parent().addClass('has-error');
+                    return;
+                } else {
+                    lxd_dst_input.parent().removeClass('has-error');
+                }
+                var lxd_src_input = modal.find('.modal-body select[name="lxd_image"]');
+                var lxd_src = lxd_src_input.val();
+                if (!lxd_src) {
+                    console.log('no lxd src seleted');
+                    lxd_src_input.parent().addClass('has-error');
+                    return;
+                }
+                var $btn = $(this);
+                $btn.button('loading');
+
+
+                $.get('/create/' + lxd_src + '/' + lxd_dst).done(function (data) {
+                    console.log(data);
+                    data = JSON.parse(data);
+                    if (data['status'] == 'Failure') {
+                        $("#msg_error_content").text(data['metadata']);
+                        $("#msg_error").show();
+                        $(this).button('reset');
+                    } else {
+                        console.log('success');
+                        $("#msg_success").text(name + " Copied.").fadeIn().delay(2000).fadeOut();
+                        $btn.button('reset');
+                        document.location.reload();
+                    }
+                }).fail(function (data) {
+                    console.log('fail');
+                    console.log(data.responseText);
+                    data = JSON.parse(data.responseText);
+                    $("#msg_error_content").text(data['error']);
+                    $("#msg_error").show();
+
+                }).always(function () {
+                    console.log('rest btn');
+                    $btn.button('reset');
+                });
+            });
+        });
+    });
+
+</script>
+{%endblock%}
