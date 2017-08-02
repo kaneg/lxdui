@@ -25,42 +25,61 @@ def get_lxd_mgr():
     return lxd_mgr
 
 
-def is_authorized():
+def is_authorized(action):
     if not settings.login_required:
         return True
     auth = request.headers.get('Authorization')
     if auth and auth.startswith('Basic'):
         secret = auth.split(' ')[1].strip()
-        origin = ('%s:%s' % (settings.admin_user, settings.admin_password)).encode('base64').strip()
-        print repr(secret)
-        print repr(origin)
-        return secret == origin
-
+        up = secret.decode('base64')
+        username, pwd = up.split(':')
+        if username == settings.admin_user:
+            return pwd == settings.admin_password
+        else:
+            users = settings.get_users()
+            if username in users:
+                user = users[username]
+                if user['password'] == pwd:
+                    return user['permission'] and action in user['permission']
     return False
 
 
 from functools import wraps
 
 
-def login_required(f):
+def make_auth_rsp():
+    rsp = make_response()
+    rsp.headers['WWW-Authenticate'] = 'Basic realm="LXD Admin Realm"'
+    rsp.status_code = 401
+    return rsp
+
+
+def login_required(f, action):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        if not is_authorized():
+        print 'wrapper action:', action
+        if not is_authorized(action):
             return make_auth_rsp()
         else:
             return f(*args, **kwargs)
 
-    def make_auth_rsp():
-        rsp = make_response()
-        rsp.headers['WWW-Authenticate'] = 'Basic realm="LXD Admin Realm"'
-        rsp.status_code = 401
-        return rsp
+    return wrapper
+
+
+def check_permission(action):
+    def wrapper(f):
+        return login_required(f, action)
 
     return wrapper
 
 
+@app.route('/logout')
+def logout():
+    return make_auth_rsp()
+
+
 @app.route('/console/<container>')
-@login_required
+@check_permission('console')
 def console(container):
     import urllib
     host, _ = urllib.splitport(request.host)
@@ -75,7 +94,7 @@ def console(container):
 
 @app.route('/')
 @app.route('/list/')
-@login_required
+@check_permission('list')
 def lxd_list():
     context = {}
     lxds = get_lxd_mgr().list()
@@ -88,7 +107,7 @@ def lxd_list():
 
 
 @app.route('/create/<src>/<dst>')
-@login_required
+@check_permission('create')
 def create(src, dst):
     print 'from ', src, ' to ', dst
     r = json.dumps(get_lxd_mgr().create_from_image(dst, src))
@@ -96,31 +115,31 @@ def create(src, dst):
 
 
 @app.route('/copy/<src>/<dst>')
-@login_required
+@check_permission('copy')
 def copy(src, dst):
     print src, ' to ', dst
     return json.dumps(get_lxd_mgr().create_from_container(dst, src))
 
 
 @app.route('/start/<lxd>')
-@login_required
+@check_permission('start')
 def start(lxd):
     print 'start', lxd
     return json.dumps(get_lxd_mgr().start(lxd))
 
 
 @app.route('/stop/<lxd>')
-@login_required
+@check_permission('stop')
 def stop(lxd):
     print 'stop', lxd
     return json.dumps(get_lxd_mgr().stop(lxd))
 
 
 @app.route('/delete/<lxd>')
-@login_required
+@check_permission('delete')
 def delete(lxd):
     return json.dumps(get_lxd_mgr().delete(lxd))
 
 
 if __name__ == '__main__':
-    app.run(settings.server_host, port=settings.server_port)
+    app.run(settings.server_host, port=settings.server_port, threaded=10)

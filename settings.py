@@ -1,4 +1,6 @@
 __author__ = 'kaneg'
+import json
+import os
 
 server_host = '0.0.0.0'
 server_port = 8080
@@ -11,3 +13,10 @@ web_shell_host = 'http://%(host)s:9090/?arg=%(container)s'
 login_required = True
 admin_user = 'admin'
 admin_password = 'admin'
+
+
+def get_users():
+    users = {}
+    if os.path.exists('users.json'):
+        users = json.load(open('users.json'))
+    return users
