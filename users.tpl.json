@@ -1,0 +1,18 @@
+{
+  "user1": {
+    "password": "password",
+    "permission:": [
+      "list",
+      "start",
+      "stop"
+    ]
+  },
+  "user2": {
+    "password": "password",
+    "permission:": [
+      "list",
+      "create",
+      "copy"
+    ]
+  }
+}
