@@ -2,7 +2,7 @@
 Web UI for LXD
 
 # Requirement
-* Flask: pip install flask
+* pip install -r requirements.txt
 * Gotty: https://github.com/yudai/gotty
 # Usage
 ```python main.py```
