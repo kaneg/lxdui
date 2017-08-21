@@ -88,7 +88,6 @@ class LXDMgr(object):
 
     def get_image_by_url(self, url):
         image = self.session.get(self.join_url(url)).json()['metadata']
-        print image
         return image
 
     def list_images(self):
@@ -180,7 +179,6 @@ class LXDMgr(object):
         }
         param = json.dumps(param)
         r = self.session.put(self.to_url(API_URL_CONTAINER_STATE, {'container': name}), data=param).json()
-        # print r
         if sync:
             return self.get_operation(r)
         return r
@@ -195,3 +193,17 @@ class LXDMgr(object):
         data = json.dumps(data)
         r = self.session.patch(self.to_url(API_URL_IMAGE, {'image': image}), data=data).json()
         return r
+
+    def alias_add(self, image, added):
+        for added_one in added:
+            data = {
+                "target": image,
+                "name": added_one
+            }
+            r = self.session.post(self.to_url(API_URL_IMAGE_ALIASES), data=json.dumps(data)).json()
+            print r
+
+    def alias_delete(self, deleted):
+        for delete_one in deleted:
+            r = self.session.delete(self.to_url(API_URL_IMAGE_ALIAS, {'alias': delete_one})).json()
+            print r

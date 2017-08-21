@@ -26,6 +26,7 @@
                 <th>Size</th>
                 <th>Uploaded</th>
                 <th>Edit</th>
+                <th>Aliases</th>
             </tr>
             </thead>
             <tbody>
@@ -33,14 +34,25 @@
             <tr>
                 <td title="{{lxd.fingerprint}}">{{lxd.fingerprint|truncate(12, end='')}}</td>
                 <td title="{{lxd.properties.name}}">{{lxd.properties.name|truncate(20)}}</td>
-                <td title="{{lxd.aliases|map(attribute='name')|join(', ')}}">{{lxd.aliases|map(attribute='name')|join(', ')|truncate(20)}}</td>
+                <td title="{{lxd.aliases|map(attribute='name')|join(', ')}}">{{lxd.aliases|map(attribute='name')|join(',
+                    ')|truncate(20)}}
+                </td>
                 <td title="{{lxd.properties.description}}">{{lxd.properties.description|truncate(50)}}</td>
                 <td>{{lxd.size|filesizeformat}}</td>
                 <td>{{lxd.uploaded_at}}</td>
                 <td>
                     <button class="btn btn-default copy_btn" data-lxd_image='{{lxd|tojson}}' data-toggle="modal"
-                            data-target="#image_edit_dialog">
+                            data-target="#image_edit_dialog" data-image_id="{{lxd.fingerprint|truncate(12, end='')}}">
                         Edit
+                    </button>
+                </td>
+                <td>
+                    <button class="btn btn-default copy_btn"
+                            data-toggle="modal"
+                            data-image_id="{{lxd.fingerprint|truncate(12, end='')}}"
+                            data-image_aliases='{{lxd.aliases|map(attribute="name")|join(",")}}'
+                            data-target="#alias_edit_dialog">
+                        Aliases
                     </button>
                 </td>
             </tr>
@@ -50,35 +62,61 @@
     </div>
 </div>
 <div id="image_edit_dialog" class="modal fade" role="dialog">
-        <div class="modal-dialog">
-            <div class="modal-content">
-                <div class="modal-header">
-                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
-                    <h4 class="modal-title">Edit lxd</h4>
-                </div>
-                <div class="modal-body">
-                    <form>
-                        <div class="form-group">
-                            <input type="text" name="image_name" class="form-control" placeholder="Name">
-                            <input type="text" name="image_description" class="form-control" placeholder="Description">
-                        </div>
-                    </form>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                    <button type="button" class="btn btn-primary" name="do_submit" data-loading-text="Updating...">Update</button>
-                </div>
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <h4 class="modal-title">Edit lxd</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <input type="text" name="image_name" class="form-control" placeholder="Name">
+                        <input type="text" name="image_description" class="form-control" placeholder="Description">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" name="do_submit" data-loading-text="Updating...">Update
+                </button>
             </div>
         </div>
     </div>
+</div>
+<div id="alias_edit_dialog" class="modal fade" role="dialog">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                <h4 class="modal-title">Edit Aliases</h4>
+            </div>
+            <div class="modal-body">
+                <form>
+                    <div class="form-group">
+                        <input type="hidden" name="image_id">
+                        <input type="text" name="image_aliases" class="form-control" placeholder="Aliases">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" name="do_submit" data-loading-text="Updating...">Update
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
 <script>
     $('#image_edit_dialog').on('show.bs.modal', function (event) {
             var button = $(event.relatedTarget); // Button that triggered the modal
             var lxd_image = button.data('lxd_image'); // Extract info from data-* attributes
+            var image_id = button.data('image_id'); // Extract info from data-* attributes
+
             var modal = $(this);
-            modal.find('.modal-title').text('Edit image: ' + lxd_image.fingerprint);
+            modal.find('.modal-title').text('Edit image: ' + image_id);
             modal.find('.modal-body input[name="image_name"]').val(lxd_image.properties.name);
-            modal.find('.modal-body input[name="image_description"]').val(lxd_image.properties.name);
+            modal.find('.modal-body input[name="image_description"]').val(lxd_image.properties.description);
             var $action = modal.find('.modal-footer button[name="do_submit"]');
             $action.click(function () {
                 var image_name = modal.find('.modal-body input[name="image_name"]').val();
@@ -107,5 +145,38 @@
                 });
             });
         });
+
+        $('#alias_edit_dialog').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget); // Button that triggered the modal
+            var image_id = button.data('image_id'); // Extract info from data-* attributes
+            var image_aliases = button.data('image_aliases'); // Extract info from data-* attributes
+            var modal = $(this);
+            modal.find('.modal-title').text('Edit aliases for image: ' + image_id);
+            modal.find('.modal-body input[name="image_aliases"]').val(image_aliases);
+            var $action = modal.find('.modal-footer button[name="do_submit"]');
+            $action.click(function () {
+                var image_aliases = modal.find('.modal-body input[name="image_aliases"]').val();
+                var $btn = $(this);
+                $btn.button('loading');
+                data = {"image_aliases":image_aliases}
+                $.post('/image/alias/edit/' + image_id, data).done(function (data) {
+                    console.log(data);
+                    data = JSON.parse(data);
+                    if (data['status'] == 'Failure') {
+                        $("#msg_error_content").text(data['metadata']);
+                        $("#msg_error").show();
+                        $(this).button('reset');
+                    } else {
+                        console.log('success');
+                        $("#msg_success").text(name + " updated.").fadeIn().delay(2000).fadeOut();
+                        $btn.button('reset');
+                        document.location.reload();
+                    }
+                }).always(function () {
+                    $btn.button('reset');
+                });
+            });
+        });
+
 </script>
 {%endblock%}

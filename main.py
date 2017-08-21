@@ -58,7 +58,6 @@ def make_auth_rsp():
 def login_required(f, action):
     @wraps(f)
     def wrapper(*args, **kwargs):
-        print 'wrapper action:', action
         if not is_authorized(action):
             return make_auth_rsp()
         else:
@@ -157,8 +156,6 @@ def lxd_image_list():
 @app.route('/image/edit/<image>', methods=['POST'])
 @check_permission('image_edit')
 def lxd_image_edit(image):
-    print image
-    print request.form
     image_name = request.form['image_name']
     image_description = request.form['image_description']
     data = {
@@ -168,6 +165,23 @@ def lxd_image_edit(image):
         }
     }
     return json.dumps(get_lxd_mgr().image_edit(image, data))
+
+
+@app.route('/image/alias/edit/<image>', methods=['POST'])
+@check_permission('image_alias_edit')
+def lxd_image_aliases_edit(image):
+    image_aliases = request.form['image_aliases'].split(',')
+    aliases = get_lxd_mgr().get_image_by_id(image)['aliases']
+    aliases = [x['name'] for x in aliases]
+    aliases = map(unicode.strip, aliases)
+    aliases = filter(None, aliases)
+    added = set(image_aliases).difference(set(aliases))
+    deleted = set(aliases).difference(set(image_aliases))
+    if added:
+        get_lxd_mgr().alias_add(image, added)
+    if deleted:
+        get_lxd_mgr().alias_delete(deleted)
+    return json.dumps({'status': 'success'})
 
 
 if __name__ == '__main__':
