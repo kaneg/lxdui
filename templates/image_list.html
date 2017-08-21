@@ -1,0 +1,111 @@
+{%extends 'layout.html' %}
+{% block LayoutContent %}
+<div class="text-center navbar-fixed-top" style="z-index:9999">
+    <div class="alert alert-warning alert-dismissible" data-dismiss="alert" id="msg_error" style="display: none"
+         role="alert">
+        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+        <div id="msg_error_content"></div>
+    </div>
+    <div class="alert alert-success" data-dismiss="alert" id="msg_success" style="display: none" role="alert"></div>
+</div>
+<div class="container main">
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            Image List
+        </div>
+
+        <table class="table table-striped table-hover">
+            <thead>
+            <tr>
+                <th>Fingerprint</th>
+                <th>Name</th>
+                <th>Aliases</th>
+                <th>Description</th>
+                <th>Size</th>
+                <th>Uploaded</th>
+                <th>Edit</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for lxd in lxd_images %}
+            <tr>
+                <td title="{{lxd.fingerprint}}">{{lxd.fingerprint|truncate(12, end='')}}</td>
+                <td title="{{lxd.properties.name}}">{{lxd.properties.name|truncate(20)}}</td>
+                <td title="{{lxd.aliases|map(attribute='name')|join(', ')}}">{{lxd.aliases|map(attribute='name')|join(', ')|truncate(20)}}</td>
+                <td title="{{lxd.properties.description}}">{{lxd.properties.description|truncate(50)}}</td>
+                <td>{{lxd.size|filesizeformat}}</td>
+                <td>{{lxd.uploaded_at}}</td>
+                <td>
+                    <button class="btn btn-default copy_btn" data-lxd_image='{{lxd|tojson}}' data-toggle="modal"
+                            data-target="#image_edit_dialog">
+                        Edit
+                    </button>
+                </td>
+            </tr>
+            {%endfor%}
+            </tbody>
+        </table>
+    </div>
+</div>
+<div id="image_edit_dialog" class="modal fade" role="dialog">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal"><span>&times;</span></button>
+                    <h4 class="modal-title">Edit lxd</h4>
+                </div>
+                <div class="modal-body">
+                    <form>
+                        <div class="form-group">
+                            <input type="text" name="image_name" class="form-control" placeholder="Name">
+                            <input type="text" name="image_description" class="form-control" placeholder="Description">
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+                    <button type="button" class="btn btn-primary" name="do_submit" data-loading-text="Updating...">Update</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<script>
+    $('#image_edit_dialog').on('show.bs.modal', function (event) {
+            var button = $(event.relatedTarget); // Button that triggered the modal
+            var lxd_image = button.data('lxd_image'); // Extract info from data-* attributes
+            var modal = $(this);
+            modal.find('.modal-title').text('Edit image: ' + lxd_image.fingerprint);
+            modal.find('.modal-body input[name="image_name"]').val(lxd_image.properties.name);
+            modal.find('.modal-body input[name="image_description"]').val(lxd_image.properties.name);
+            var $action = modal.find('.modal-footer button[name="do_submit"]');
+            $action.click(function () {
+                var image_name = modal.find('.modal-body input[name="image_name"]').val();
+                var image_description = modal.find('.modal-body input[name="image_description"]').val();
+                console.log('image_name:' + image_name);
+                console.log('image_description:' + image_description);
+
+                var $btn = $(this);
+                $btn.button('loading');
+                data = {"image_name":image_name, "image_description":image_description}
+                $.post('/image/edit/' + lxd_image.fingerprint, data).done(function (data) {
+                    console.log(data);
+                    data = JSON.parse(data);
+                    if (data['status'] == 'Failure') {
+                        $("#msg_error_content").text(data['metadata']);
+                        $("#msg_error").show();
+                        $(this).button('reset');
+                    } else {
+                        console.log('success');
+                        $("#msg_success").text(name + " updated.").fadeIn().delay(2000).fadeOut();
+                        $btn.button('reset');
+                        document.location.reload();
+                    }
+                }).always(function () {
+                    $btn.button('reset');
+                });
+            });
+        });
+</script>
+{%endblock%}

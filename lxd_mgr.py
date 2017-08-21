@@ -3,11 +3,13 @@ from flask import json
 import requests
 import unixsocket
 from requests.packages.urllib3.exceptions import InsecureRequestWarning
+
 requests.packages.urllib3.disable_warnings(InsecureRequestWarning)
 
 API_URL_CONTAINERS = '%(version)s/containers'
 API_URL_CONTAINER = '%(version)s/containers/%(container)s'
 API_URL_CONTAINER_STATE = '%(version)s/containers/%(container)s/state'
+API_URL_IMAGES = '%(version)s/images'
 API_URL_IMAGE_ALIASES = '%(version)s/images/aliases'
 API_URL_IMAGE = '%(version)s/images/%(image)s'
 API_URL_IMAGE_ALIAS = '%(version)s/images/aliases/%(alias)s'
@@ -83,6 +85,18 @@ class LXDMgr(object):
             result.update(images)
             return result
         return {}
+
+    def get_image_by_url(self, url):
+        image = self.session.get(self.join_url(url)).json()['metadata']
+        print image
+        return image
+
+    def list_images(self):
+        r = self.session.get(self.to_url(API_URL_IMAGES)).json()
+        if self.is_success(r):
+            image_urls = r['metadata']
+            return map(self.get_image_by_url, image_urls)
+        return []
 
     def get_image_by_alias(self, target):
         r = self.session.get(self.to_url(API_URL_IMAGE_ALIAS, {'alias': target})).json()
@@ -176,3 +190,8 @@ class LXDMgr(object):
         # print r
         if self.is_success(r):
             return r['metadata']
+
+    def image_edit(self, image, data):
+        data = json.dumps(data)
+        r = self.session.patch(self.to_url(API_URL_IMAGE, {'image': image}), data=data).json()
+        return r

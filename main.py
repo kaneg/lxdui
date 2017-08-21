@@ -6,6 +6,7 @@ from flask import Flask, render_template, request, session, redirect, make_respo
 import settings
 from lxd_mgr import LXDMgr
 import os
+import status_codes
 
 app = Flask(__name__)
 app.debug = settings.debug
@@ -101,8 +102,8 @@ def lxd_list():
     image_aliases = get_lxd_mgr().list_image_alias()
     context['lxds'] = lxds
     context['lxd_image_aliases'] = image_aliases
-    import status_codes
     context['StatusCodes'] = status_codes
+    context['navigation'] = 'container'
     return render_template('lxd_list.html', **context)
 
 
@@ -141,5 +142,34 @@ def delete(lxd):
     return json.dumps(get_lxd_mgr().delete(lxd))
 
 
+@app.route('/image/')
+@app.route('/image/list/')
+@check_permission('image_list')
+def lxd_image_list():
+    context = {}
+    images = get_lxd_mgr().list_images()
+    context['lxd_images'] = images
+    context['StatusCodes'] = status_codes
+    context['navigation'] = 'image'
+    return render_template('image_list.html', **context)
+
+
+@app.route('/image/edit/<image>', methods=['POST'])
+@check_permission('image_edit')
+def lxd_image_edit(image):
+    print image
+    print request.form
+    image_name = request.form['image_name']
+    image_description = request.form['image_description']
+    data = {
+        "properties": {
+            "name": image_name,
+            "description": image_description
+        }
+    }
+    return json.dumps(get_lxd_mgr().image_edit(image, data))
+
+
 if __name__ == '__main__':
+    app.config['TEMPLATES_AUTO_RELOAD'] = True
     app.run(settings.server_host, port=settings.server_port, threaded=10)
