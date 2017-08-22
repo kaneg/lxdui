@@ -74,7 +74,7 @@ class LXDMgr(object):
     def get_alias_by_url(self, url):
         m = self.session.get(self.join_url(url)).json()['metadata']
         target = m['target']
-        return m['description'], self.get_image_by_id(target)
+        return m['name'], self.get_image_by_id(target)
 
     def list_image_alias(self):
         r = self.session.get(self.to_url(API_URL_IMAGE_ALIASES)).json()
